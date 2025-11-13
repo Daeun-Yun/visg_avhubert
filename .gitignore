@@ -1,0 +1,14 @@
+checkpoints/
+roi/
+finetune_stopped/
+None/
+outputs/
+full_video/
+avhubert/clustering/
+avhubert/misc/
+*.md
+roi_*
+ctc_*
+base_*
+*.csv
+.vscode/
