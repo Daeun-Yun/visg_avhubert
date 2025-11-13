@@ -1,0 +1,139 @@
+# @package _group_
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 200
+  tensorboard_logdir: tblog
+  seed: 1337
+  user_dir: ???
+
+checkpoint:
+  save_interval: 2
+  keep_interval_updates: 1
+  no_epoch_checkpoints: true
+  best_checkpoint_metric: asr_accuracy
+  maximize_best_checkpoint_metric: true
+
+distributed_training:
+  ddp_backend: c10d
+  find_unused_parameters: true
+  distributed_world_size: 1
+  distributed_port: 29671
+  nprocs_per_node: 1
+
+task:
+  _name: viseme_av_hubert_pretraining
+  is_s2s: true
+  use_ctc: true  # Use CTC loss for viseme classification
+  viseme_classification: true
+  viseme_dir: ???
+  data: ???
+  label_dir: ???
+  tokenizer_bpe_model: ???
+  normalize: true  # must be consistent with pre-training
+  labels: ["wrd"]
+  single_target: true
+  fine_tuning: true
+  stack_order_audio: 4
+  tokenizer_bpe_name: sentencepiece
+  max_sample_size: 500
+  modalities: ["video","audio"]
+  image_aug: true
+  pad_audio: true
+  random_crop: false
+  noise_prob: 0.25
+  noise_snr: 0
+  noise_wav: ???
+
+dataset:
+  num_workers: 8
+  max_tokens: 2000
+  validate_after_updates: 0
+  validate_interval: 2
+  train_subset: train
+  valid_subset: valid
+
+criterion:
+  _name: multitask_criterion
+  viseme_weight: 0.2
+  sentence_avg: true
+  label_smoothing: 0.1
+  ignore_viseme_padding: true
+  viseme_start_update: 0
+  convex_linear: false
+  learnable_weights: false
+  uncertainty: false
+  uwso: false
+  rlw: false
+  warmup: false
+  dwa: false
+  nonlinear: false
+  use_ctc: true  # Use CTC for viseme classification task
+
+optimization:
+  max_update: 30000
+  lr: [0.001]
+  sentence_avg: true
+  update_freq: [4]
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+
+lr_scheduler:
+  _name: tri_stage
+  warmup_steps: 10000 # try 5k
+  hold_steps: 0 # try 5k
+  decay_steps: 20000 
+  final_lr_scale: 0.05 # try 0.1
+
+model:
+  _name: av_hubert_seq2seq
+  w2v_path: ???
+  viseme_classification: true
+  weight_mix: false
+  use_ctc: true  # Use CTC for viseme classification task
+  apply_mask: false
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+  layerdrop: 0.1
+  dropout: 0.0
+  activation_dropout: 0.1
+  attention_dropout: 0.0
+  feature_grad_mult: 1.0
+  decoder_layers: 6
+  decoder_dropout: 0.1
+  decoder_attention_dropout: 0.0
+  decoder_activation_dropout: 0.1
+  freeze_finetune_updates: 20000
+  share_decoder_input_output_embed: true
+  decoder_normalize_before: true
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+          - model.w2v_path
+          - dataset.train_subset
+          - dataset.valid_subset
+          - criterion.wer_kenlm_model
+          - criterion.wer_lexicon
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

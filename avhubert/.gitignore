@@ -1,0 +1,14 @@
+checkpoints/
+roi/
+finetune_stopped/
+None/
+outputs/
+full_video/
+avhubert/clustering/
+avhubert/preparation/
+avhubert/misc/
+roi_checkpoints_warmup_convex_uwso_24k_1layer/
+*.md
+roi_*
+ctc_*
+base_*
