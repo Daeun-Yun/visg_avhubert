@@ -1,4 +1,0 @@
-submitit INFO (2025-05-02 10:35:11,499) - Starting with JobEnvironment(job_id=1908758, hostname=sig203, local_rank=0(1), node=0(1), global_rank=0(1))
-submitit INFO (2025-05-02 10:35:11,499) - Loading pickle: /home/aristosp/models/exp2/avhubert/preparation/tmpqr2yr3lj/1908758_submitted.pkl
-0 raw audios
-submitit INFO (2025-05-02 10:35:11,518) - Job completed successfully
