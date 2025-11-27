@@ -5,9 +5,7 @@ import itertools
 import logging
 import os
 import sys
-import time
 from typing import Any, List, Optional, Union
-# import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import torch
@@ -260,18 +258,7 @@ class AVHubertDataset(FairseqDataset):
                         def transform(self, labels):
                             return [self.dictionary.get(l, self.dictionary.get('<unk>', -1)) for l in labels] # Use <unk> for safety
                         def get_pad_index(self):
-                            # Use a pad symbol that is not in the main visemes,
-                            # Fairseq's collate_tokens will use this.
-                            # For CTC, the padding value is usually ignored by the loss function itself,
-                            # but it's good practice to have a distinct pad index.
-                            # Let's assume the padding token is not a viseme and has a high index.
-                            # However, fairseq's collate_tokens uses a `pad_idx`, so we will define one.
-                            # We will use a value that is not a valid index, like -100, if the dictionary handles it,
-                            # or define a pad token. For simplicity, let's assume the padding value for visemes is also 0
-                            # since the blank token is what CTC uses for "no output".
-                            # Let's align with Fairseq's typical padding. We assume the dictionary has a pad symbol.
-                            # We will use a value that is ignored by the loss.
-                            return self.blank_idx # Let's use the blank index for padding as well.
+                            return self.blank_idx #use the blank index for padding
 
                 self.label_encoder = DictLabelEncoder(self.viseme_dict)
             else:
@@ -533,7 +520,6 @@ class AVHubertDataset(FairseqDataset):
                 # Create a tensor to hold the viseme targets and initialize with -1 as the padding value
                 vsm_targets = torch.full((len(samples), max_vsm_len), -1, dtype=torch.long)
                 for i, s in enumerate(samples): # Iterate through the labels and fill the tensor
-                    target = s["viseme_target"]
                     vsm_targets[i, :len(s["viseme_target"])] = s["viseme_target"]
                 viseme_lengths = torch.LongTensor([s["viseme_target_length"] for s in samples])
                 batch["viseme_target_length"] = viseme_lengths

@@ -3,7 +3,6 @@ from typing import Optional
 import math
 import torch
 import torch.nn.functional as F
-# from focal_loss import FocalLoss
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass

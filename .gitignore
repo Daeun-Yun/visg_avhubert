@@ -12,3 +12,6 @@ ctc_*
 base_*
 *.csv
 .vscode/
+assets/
+ffmpeg
+avhubert/scripts/*_LRS2.sh

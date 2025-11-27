@@ -1,18 +1,13 @@
 from plot_utils import *
 import pandas as pd
 import numpy as np
-from scipy import stats
-from scipy.stats import wilcoxon, spearmanr
 import matplotlib.pyplot as plt
 from sentence_transformers import SentenceTransformer, util
 import os, json
-import csv
-from tqdm import tqdm
-from matplotlib_venn import venn2
-import seaborn as sns
 
-model = 'base'
-csv_path = os.getcwd() + f'/avhubert/selected_{model}.csv'
+
+model = 'large'
+csv_path = os.getcwd() + f'/avhubert/analysis/selected_{model}.csv'
 
 df = pd.read_csv(csv_path)   
 # noise_type = None
@@ -124,7 +119,7 @@ bar_width = 0.35  # width of each individual bar
 group_spacing = 0.6  # spacing between each noise type group
 # spacing = group_width / len(error_types)  # space between error-type subgroups
 
-fig, ax = plt.subplots(figsize=(15, 11))
+fig, ax = plt.subplots(figsize=(13, 10))
 
 x_base = np.arange(len(noise_types)) * (len(error_types) * 2 * bar_width + group_spacing)
 
@@ -149,26 +144,26 @@ for j, err_type in enumerate(error_types):
     for bar in baseline_bars:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width() / 2, height + max(baseline_vals) * 0.01,
-                f"{height:.0f}", ha='center', va='bottom', fontsize=14)
+                f"{height:.0f}", ha='center', va='bottom', fontsize=18)
     for bar in viseme_bars:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width() / 2, height + max(viseme_vals) * 0.01,
-                f"{height:.0f}", ha='center', va='bottom', fontsize=14)
+                f"{height:.0f}", ha='center', va='bottom', fontsize=18)
 
 # X-axis labels at the center of each noise type cluster
 ax.set_xticks(x_base + bar_width * len(error_types))
 title_noises = ['Babble', 'Music', 'Speech', 'Random Noise']
-ax.set_xticklabels(title_noises, fontsize=14)
+ax.set_xticklabels(title_noises, fontsize=18)
 
 # Labels and title
-ax.set_ylabel('Number of Errors', fontsize=14)
-ax.set_xlabel('Noise Type', fontsize=14)
-ax.set_title(f'Total Errors by Noise Type and Error Type ({model} AV-HuBERT vs VisG AV-HuBERT)', fontsize=14)
+ax.set_ylabel('Number of Errors', fontsize=18)
+ax.set_xlabel('Noise Type', fontsize=18)
+ax.set_title(f'Total Errors by Noise Type and Error Type ({model} AV-HuBERT vs VisG AV-HuBERT)', fontsize=18)
 
 # Tick and legend styling
-ax.tick_params(axis='x', labelsize=14)
-ax.tick_params(axis='y', labelsize=14)
-ax.legend(ncol=3, bbox_to_anchor=(0.5, -0.15), loc='upper center', fontsize=14)
+ax.tick_params(axis='x', labelsize=18)
+ax.tick_params(axis='y', labelsize=18)
+ax.legend(ncol=3, bbox_to_anchor=(0.5, -0.15), loc='upper center', fontsize=18)
 
 plt.tight_layout()
 # plt.show()
@@ -184,7 +179,7 @@ subs_vals = [avg_per_snr[snr]['subs'] for snr in snr_vals]
 ins_vals = [avg_per_snr[snr]['ins'] for snr in snr_vals]
 dels_vals = [avg_per_snr[snr]['dels'] for snr in snr_vals]
 
-plt.figure(figsize=(15, 11))
+plt.figure(figsize=(13, 10))
 x = np.arange(len(snr_vals))
 width = 0.25
 
@@ -205,13 +200,13 @@ for bars in [bars_subs, bars_ins, bars_dels]:
         plt.text(bar.get_x() + bar.get_width()/2,
                  y,
                  f"{height:.1f}",
-                 ha='center', va=va, fontsize=14)
+                 ha='center', va=va, fontsize=18)
 
-plt.xticks(x, [f"{snr} dB" for snr in snr_vals], fontsize=14)
-plt.xlabel('SNR (dB)', fontsize=14)
-plt.ylabel('Average Error Difference (VisG AV-HuBERT - AV-HuBERT)', fontsize=14)
-plt.title('Average Error Differences per SNR across Noise Types', fontsize=14)
-plt.legend(fontsize=14)
+plt.xticks(x, [f"{snr} dB" for snr in snr_vals], fontsize=18)
+plt.xlabel('SNR (dB)', fontsize=18)
+plt.ylabel('Average Error Difference (VisG AV-HuBERT - AV-HuBERT)', fontsize=18)
+plt.title('Average Error Differences per SNR across Noise Types', fontsize=18)
+plt.legend(fontsize=18)
 plt.axhline(0, color='black', linewidth=0.8)
 plt.tight_layout()
 # plt.show()
@@ -249,7 +244,7 @@ error_types = ['Substitutions', 'Insertions', 'Deletions']
 err_key_map = {'Substitutions': 'subs', 'Insertions': 'ins', 'Deletions': 'dels'}
 
 # Create 2x2 subplot layout
-fig, axes = plt.subplots(2, 2, figsize=(15, 11))
+fig, axes = plt.subplots(2, 2, figsize=(13, 10))
 axes = axes.flatten()
 
 # Iterate over noise types
@@ -289,16 +284,17 @@ for i, noise in enumerate(noise_types):
 
     # Axis labels and formatting
     ax.set_xticks(x)
-    ax.set_xticklabels([f"{snr} dB" for snr in snr_vals], fontsize=12)
-    ax.set_xlabel('SNR (dB)', fontsize=12)
-    ax.set_ylabel('Error Difference (VisG AV-HuBERT - AV-HuBERT)', fontsize=11)
+    ax.set_xticklabels([f"{snr} dB" for snr in snr_vals], fontsize=14)
+    ax.set_xlabel('SNR (dB)', fontsize=14)
+    ax.set_ylabel('Error Difference (VisG AV-HuBERT - AV-HuBERT)', fontsize=12)
     title = f"Random {noise}" if noise == 'Noise' else f"{noise}"
-    ax.set_title(title, fontsize=14)
+    ax.set_title(title, fontsize=16)
     ax.axhline(0, color='black', linewidth=0.8)
-    ax.legend(fontsize=14)
-    ax.tick_params(axis='y', labelsize=12)
+    ax.legend(fontsize=16)
+    ax.tick_params(axis='y', labelsize=14)
 
-plt.suptitle("Error Differences per SNR for Each Noise Type", fontsize=16, y=1.02)
+# plt.suptitle("Error Differences per SNR for Each Noise Type", fontsize=16, y=1.02)
+plt.suptitle("")
 plt.tight_layout()
 # plt.show()
 plt.savefig(os.path.join(save_directory + 'diff_per_snr_for_eachnoise.pdf'), )

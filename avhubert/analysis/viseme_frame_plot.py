@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import random
 import os
 
-
+# --- Paths and parameters ---
 video_path = "/home/aristosp/datasets/LRS3/roi/test/0Fi83BHQsMA/00004.mp4"
 audio_path = "/home/aristosp/datasets/LRS3/audio/test/0Fi83BHQsMA/00004.wav"
 csv_path = "/home/aristosp/datasets/LRS3/audio/aligned/test/0Fi83BHQsMA/00004_viseme_lee.csv"
@@ -18,10 +18,10 @@ if not required_cols.issubset(df.columns):
 # --- Pick a viseme label ---
 viseme_labels = df['Viseme'].unique().tolist()
 phonemes = df['Label'].unique().tolist()
-# phoneme = random.choice(phonemes)
+
 phoneme = 'P'
-# if viseme_label is None:
-# viseme_label = random.choice(viseme_labels)
+viseme = 'P'
+
 print(f"Selected phoneme: {phoneme}")
 
 # --- Open the video ---
@@ -32,15 +32,16 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
 # --- Find intervals for the chosen viseme ---
-phoneme_rows = df[df['Label'] == phoneme][['Begin', 'End', 'Viseme']]
-
+# phoneme_rows = df[df['Label'] == phoneme][['Begin', 'End', 'Viseme']]
+viseme_rows = df[df['Viseme'] == viseme][['Begin', 'End', 'Label']]
+viseme_rows = viseme_rows[:-1]
 
 # --- Sample timestamps within those intervals ---
 begins, ends = [], []
-visemes = []
-for _, row in phoneme_rows.iterrows():
-    b, e, viseme = row['Begin'], row['End'], row['Viseme']  # ← reads df['Label'] explicitly
-    visemes.append(viseme)
+phonemes = []
+for _, row in viseme_rows.iterrows():
+    b, e, phoneme = row['Begin'], row['End'], row['Label']  # ← reads df['Label'] explicitly
+    phonemes.append(phoneme)
     begins.append(b)
     ends.append(e)
 
@@ -49,7 +50,7 @@ for _, row in phoneme_rows.iterrows():
 # --- Read and collect frames ---
 frames = []
 
-for begin, end, viseme in zip(begins, ends, visemes):  # use viseme, not phonemes
+for begin, end, phoneme in zip(begins, ends, phonemes):  # use viseme, not phonemes
     start_frame_idx = int(begin * fps)
     end_frame_idx = int(end * fps)
 
@@ -74,29 +75,17 @@ plt.figure(figsize=(4 * n, 5))
 for i, (f_idx, ts, frame, phoneme, viseme) in enumerate(frames):
     ax = plt.subplot(1, n, i + 1)
     ax.imshow(frame)
-    ax.set_title(f"Frame: {f_idx}", fontsize=14)
+    ax.set_title(f"Frame: {f_idx}", fontsize=16)
     ax.axis("off")
 
     # Subtitle below image
-    subtitle = f"Phoneme: {phoneme}\nViseme: {viseme}\nt = {ts:.2f}s"
+    subtitle = f"Phoneme: /{phoneme.lower()}/ \nViseme: {viseme}\nt = {ts:.2f}s"
     ax.text(
         0.5, -0.01, subtitle, 
         ha='center', va='top', 
         transform=ax.transAxes,
-        fontsize=14
+        fontsize=16
     )
 
 plt.tight_layout()
 plt.show()
-
-# if __name__ == "__main__":
-#     import argparse
-
-#     parser = argparse.ArgumentParser(description="Plot frames with the same viseme label")
-#     parser.add_argument("video", help="Path to .mp4 video file")
-#     parser.add_argument("csv", help="Path to alignment CSV file")
-#     parser.add_argument("--label", help="Viseme label to plot (optional)")
-#     parser.add_argument("--num_frames", type=int, default=5, help="Number of frames to show")
-
-#     args = parser.parse_args()
-#     plot_viseme_frames(args.video, args.csv, args.label, args.num_frames)

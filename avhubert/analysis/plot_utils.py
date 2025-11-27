@@ -86,7 +86,7 @@ def build_character_ngram_model(train_texts, n=5, smoothing='laplace'):
         lm = MLE(n)
     print("Training character-level n-gram model...")
     lm.fit(train_ngrams, padded_vocab)
-    lm_path = '/home/aristosp/plots/433h_char_lm_5gram.pkl'
+    lm_path = '/home/aristosp/plots/lrs2_char_lm_5gram.pkl'
     with open(lm_path, 'wb') as f:
         pickle.dump(lm, f)
 
@@ -139,14 +139,14 @@ def compute_cross_entropy(lm, sentence, n=5):
 def create_noise_baseline_plots(csv_path, name, model='base', output_base_dir='/home/aristosp/plots'):
     """
     Create baseline vs viseme model comparison plots across different noise types and levels.
-
+    
     This function:
     1. Loads the CSV with experiment results
     2. Separates baseline (last row) from experiments
-    3. For each experiment, creates plots comparing baseline vs viseme model
+    3. Creates a 2x2 subplot figure comparing baseline vs viseme model
        across different noise types (Babble LRS3, Speech, Music, Noise)
-    4. Saves plots in organized directories per experiment
-
+    4. Saves plot in organized directory per experiment
+    
     Args:
         csv_path: Path to the CSV file containing experiment results
         name: Experiment Name
@@ -156,50 +156,81 @@ def create_noise_baseline_plots(csv_path, name, model='base', output_base_dir='/
     print("\n" + "="*80)
     print("Creating Noise-Level Baseline Comparison Plots")
     print("="*80 + "\n")
-
+    
     # Load CSV
     df = pd.read_csv(csv_path)
-
+    
     # Separate baseline and experiments
     baseline_row = df.iloc[-1]  # last row = baseline
     baseline_row = baseline_row.iloc[7:]
-
+    
     # Remove unnecessary columns
     mask = baseline_row.index.str.contains('Babble Musan|AVG')
     baseline_row = baseline_row[~mask]
-
+    
     # Single experiment processing
     experiment = df[df.isin([name]).any(axis=1)]
     experiment = experiment.iloc[:, 7:]
     experiment_mask = experiment.columns.str.contains('Babble Musan|AVG')
     experiment = experiment.loc[:, ~experiment_mask]
-
+    
     print(f"Creating noise-level baseline WER comparisons for {name}...\n")
-
-
+    
+    # Define noise types and SNR levels
+    noise_types = ['Babble', 'Speech', 'Music', 'Noise']
+    snr_levels = [-10, -5, 0, 5, 10]
+    
+    # Create 2x2 subplot layout
+    fig, axes = plt.subplots(2, 2, figsize=(13, 10), sharex=True)
+    axes = axes.flatten()
+    
     # Iterate through noise types
-    for noise_type in ['Babble', 'Speech', 'Music', 'Noise']:
-        experiment_noise = experiment.filter(like=noise_type).iloc[0]
-        baseline_noise = baseline_row.filter(like=noise_type)
-
-        # Create plot
-        plt.figure(figsize=(15, 9))
-        plt.plot(baseline_noise, label='Baseline', marker='o')
-        plt.plot(experiment_noise, label='Viseme Model', marker='P')
-        plt.legend()
-        plt.ylabel('WER (%)')
-        plt.xlabel('Noise level (dB)')
-        plt.xticks(ticks=[0, 1, 2, 3, 4], labels=['-10dB', '-5dB', '0dB', '5dB', '10dB'])
-        plt.title(f'Baseline WER vs Viseme-Based Experiment in {noise_type}')
-
-        # Save plot
-        save_path = os.path.join(output_base_dir, f'{noise_type.replace(" ", "_")}.pdf')
-        # plt.show()
-        plt.savefig(save_path)
-        plt.close()
-
+    for i, noise_type in enumerate(noise_types):
+        ax = axes[i]
+        
+        experiment_values = experiment.filter(like=noise_type).iloc[0].values
+        baseline_values = baseline_row.filter(like=noise_type).values
+        
+        ax.plot(
+            snr_levels,
+            baseline_values,
+            label='AV-HuBERT',
+            marker='o',
+            linestyle='--'
+        )
+        ax.plot(
+            snr_levels,
+            experiment_values,
+            label='VisG AV-HuBERT',
+            marker='P',
+            linestyle='-'
+        )
+        
+        ax.set_ylabel('WER (%)', fontsize=18)
+        ax.set_title(f'Random {noise_type}' if noise_type == 'Noise' else f"{noise_type}", fontsize=18)
+        ax.grid(True, axis='y')
+        ax.legend(fontsize=16)
+        ax.set_xticks(snr_levels)
+        ax.tick_params(labelsize=18)
+    
+    # Shared x-axis label
+    fig.supxlabel('Noise level (dB)', fontsize=18)
+    
+    # Show dB labels on bottom row
+    for ax in axes[-2:]:
+        ax.set_xticklabels([f'{db}dB' for db in snr_levels], fontsize=18)
+    
+    plt.tight_layout()
+    
+    # Save plot
+    save_path = os.path.join(output_base_dir, 'new_2x2_wer_comparison.pdf')
+    plt.savefig(save_path)
+    # plt.show()
+    plt.close()
+    
     print("\nFinished creating noise-level baseline comparison plots.")
     print("="*80 + "\n")
+
 
 
 def align_word_sequences(ref_words, hypo_words):

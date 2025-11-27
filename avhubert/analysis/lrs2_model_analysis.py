@@ -13,6 +13,56 @@ from matplotlib_venn import venn2
 import seaborn as sns
 import argparse
 
+
+def get_experiment_directory(csv_path, experiment_params, model):
+    """
+    Get the experiment directory based on model type.
+    
+    For model='base': uses row 0 (0.3prob-2.5db,2 + 2 dropout0.3 + Layernorm...)
+    For model='large': uses row 3 (0.3prob-2.5db,3 + 3 dropout0.3 + Layernorm...)
+    
+    Saves in directory: .../plots/selected_{model}/LRS2/...
+    """
+    import pandas as pd
+    import os
+    
+    # Read the CSV file
+    df = pd.read_csv(csv_path)
+    
+    # Select the appropriate row based on model type
+    if model == 'base':
+        selected_row_index = 0
+        row_description = "2 + 2 dropout0.3 + Layernorm"
+    elif model == 'large':
+        selected_row_index = 2
+        row_description = "3 + 3 dropout0.3 + Layernorm"
+    else:
+        raise ValueError(f"Model type '{model}' not recognized. Use 'base' or 'large'.")
+    
+    # Get the selected row
+    selected_row = df.iloc[selected_row_index]
+    
+    # Create base directory path: .../plots/selected_{model}/LRS2/
+    # csv_dir = os.path.dirname(csv_path)
+    # project_root = os.path.dirname(os.path.dirname(csv_dir))
+    
+    # Create the directory structure
+    base_dir = os.path.join('/home/aristosp/', 'plots', f'selected_{model}', 'LRS2')
+    
+    # Add experiment name if provided
+    if 'Name' in experiment_params and experiment_params['Name']:
+        exp_dir = os.path.join(base_dir, experiment_params['Name'])
+    else:
+        exp_dir = os.path.join(base_dir, f'row_{selected_row_index}')
+    
+    os.makedirs(exp_dir, exist_ok=True)
+    
+    print(f"Using model='{model}' -> Row {selected_row_index}: {row_description}")
+    print(f"Base directory: {exp_dir}")
+    
+    return exp_dir, selected_row_index
+
+
 #0. Load data
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # model = 'large'
@@ -20,13 +70,13 @@ import argparse
 
 def run_analysis(model, exps):
     # Load or train language model for perplexity calculations
-    if os.path.exists('/home/aristosp/plots/433h_char_lm_5gram.pkl'):
+    if os.path.exists('/home/aristosp/plots/lrs2_char_lm_5gram.pkl'):
         print(f"Loading existing word-level LM...")
-        with open('/home/aristosp/plots/433h_char_lm_5gram.pkl', "rb") as f:
+        with open('/home/aristosp/plots/lrs2_char_lm_5gram.pkl', "rb") as f:
             lm = pickle.load(f)
     else:
-        train_wrd_file = '/home/aristosp/datasets/LRS3/30h_data/train.wrd'
-        valid_wrd_file = '/home/aristosp/datasets/LRS3/30h_data/valid.wrd'
+        train_wrd_file = '/home/aristosp/datasets/lrs2_rf/lrs2/metadata/train.wrd'
+        valid_wrd_file = '/home/aristosp/datasets/lrs2_rf/lrs2/metadata/valid.wrd'
         train_texts = []
         for wrd_file in [train_wrd_file, valid_wrd_file]:
             with open(wrd_file, 'r', encoding='utf-8') as f:
@@ -55,13 +105,13 @@ def run_analysis(model, exps):
             noise_path = f'{noise_type}_snr{snr}' if noise_type else None
             # Usage: Specify which experiment you're analyzing
             # Option 1: By row index (0 for first row, 1 for second, etc.)
-            csv_path = os.getcwd() + f'/avhubert/analysis/selected_{model}.csv'
+            csv_path = os.getcwd() + f'/avhubert/analysis/lrs2_results.csv'
             # experiment_row_index = 4  # Change this to match your experiment
 
             experiment_params = {
                 'Name': exp
             }
-            base_save_directory = get_experiment_directory(csv_path, experiment_params, model)
+            base_save_directory, selected_row_index = get_experiment_directory(csv_path, experiment_params, model)
             if noise_type is not None:
                 save_directory = os.path.join(base_save_directory, noise_type, f'snr_{snr}dB')
             else:
@@ -71,15 +121,15 @@ def run_analysis(model, exps):
             print(f"Saving outputs to: {save_directory}")
 
             if noise_type is not None:
-                with open(f'/home/aristosp/models/av_hubert/{model}_decode/{noise_path}/hypo-244018.json', 'r') as baseline_file:
+                with open(f'/home/aristosp/models/av_hubert/{model}_decode/LRS2_decode/{noise_path}/hypo-244018.json', 'r') as baseline_file:
                     baseline_data = json.load(baseline_file)
-                with open(f'/home/aristosp/viseme_{model}_models/{experiment_params["Name"]}/decode/{noise_path}/hypo-244018.json', 'r') as f2:
+                with open(f'/home/aristosp/viseme_{model}_models/{experiment_params["Name"]}/LRS2_decode/{noise_path}/hypo-244018.json', 'r') as f2:
                     vsm_data = json.load(f2)  
             else:
-                with open(f'/home/aristosp/models/av_hubert/{model}_decode/hypo-244018.json', 'r') as baseline_file:
+                with open(f'/home/aristosp/models/av_hubert/{model}_decode/LRS2_decode/hypo-244018.json', 'r') as baseline_file:
                     baseline_data = json.load(baseline_file)
                 # Read viseme model JSON
-                with open(f'/home/aristosp/viseme_{model}_models/{experiment_params["Name"]}/decode/hypo-244018.json', 'r') as f2:
+                with open(f'/home/aristosp/viseme_{model}_models/{experiment_params["Name"]}/LRS2_decode/hypo-244018.json', 'r') as f2:
                     vsm_data = json.load(f2)
 
 
@@ -104,7 +154,7 @@ def run_analysis(model, exps):
             #1. Statistical analysis
             df = pd.read_csv(csv_path)
             # Separate baseline and experiments
-            baseline_row = df.iloc[-1]  # last row = baseline
+            baseline_row = df.iloc[3] if selected_row_index==2 else df.iloc[1]  # last row = baseline
             baseline_row = baseline_row.iloc[7:]
 
             # Remove unnecessary columns
@@ -117,7 +167,7 @@ def run_analysis(model, exps):
             # Sanity check
             if noise_type is not None:
                 vsm_col = f"{noise_type.capitalize()} {snr}dB" 
-                vsm_baseline = df.loc[df['Name'] == experiment_params['Name'], vsm_col].values[0]
+                vsm_baseline = df.iloc[selected_row_index][vsm_col]
 
                 assert abs(vsm_avg - vsm_baseline) < 0.02, \
                     f"Viseme WER mismatch! {vsm_avg:.4f} vs {vsm_baseline:.4f}"
@@ -190,8 +240,8 @@ def run_analysis(model, exps):
 
             # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # 2. WER - db Plot, SIDs comparison
-            if noise_type is None:
-                create_noise_baseline_plots(csv_path, experiment_params["Name"], model=model, output_base_dir=save_directory)
+            # if noise_type is None:
+            #     create_noise_baseline_plots(csv_path, experiment_params["Name"], model=model, output_base_dir=save_directory)
             sid_savepath = os.path.join(save_directory, f'sids_{noise_type}_{snr}.pdf') if noise_type is not None else os.path.join(save_directory, 'sids.pdf')
             title = f"S/I/D Errors Comparison under {noise_type} at {snr} dB" if noise_type is not None else "S/I/D Errors Comparison in Clean Conditions"
             plot_sid_comparison(baseline_sids, vsm_sids, title, savepath=sid_savepath,labels=(f"{model} AV-HuBERT", "VisG AV-HuBERT"))
@@ -259,32 +309,32 @@ def run_analysis(model, exps):
 
             # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
             # 4. Plot an example utterance that has gotten better and one that has gotten worse
-            examples = {
-                "better": better_utts[:5],
-                "worse": worse_utts[:5]
-            }
+            # examples = {
+            #     "better": better_utts[:5],
+            #     "worse": worse_utts[:5]
+            # }
 
-            for quality, example_list in examples.items():
-                for example in example_list:
-                    dataset, speaker, file = example.split('/')
-                    example_filename = f"{speaker}_{file}"
+            # for quality, example_list in examples.items():
+            #     for example in example_list:
+            #         dataset, speaker, file = example.split('/')
+            #         example_filename = f"{speaker}_{file}"
 
-                    video_path = f"/home/aristosp/datasets/LRS3/roi/{example}.mp4"
-                    alignment_path = f"/home/aristosp/datasets/LRS3/audio/aligned/{example}.csv"
+            #         video_path = f"/home/aristosp/datasets/LRS3/roi/{example}.mp4"
+            #         alignment_path = f"/home/aristosp/datasets/LRS3/audio/aligned/{example}.csv"
 
-                    idx = vsm_data['utt_id'].index(example)
-                    ref = vsm_data['ref'][idx]
-                    hypo = vsm_data['hypo'][idx]
+            #         idx = vsm_data['utt_id'].index(example)
+            #         ref = vsm_data['ref'][idx]
+            #         hypo = vsm_data['hypo'][idx]
 
-                    save_name = (
-                        f"{quality}_{example_filename}_{noise_type}_{snr}.pdf"
-                        if noise_type is not None
-                        else f"{quality}_{example_filename}.pdf"
-                    )
-                    save_path = os.path.join(save_directory, save_name)
+            #         save_name = (
+            #             f"{quality}_{example_filename}_{noise_type}_{snr}.pdf"
+            #             if noise_type is not None
+            #             else f"{quality}_{example_filename}.pdf"
+            #         )
+            #         save_path = os.path.join(save_directory, save_name)
 
-                    show_wrong_segments_with_context(video_path, ref, visg_hypo=hypo, avhubert_hypo=baseline_data['hypo'][idx], savepath=save_path, alignment_path=alignment_path, mode=quality)
-                    plt.close()
+            #         show_wrong_segments_with_context(video_path, ref, visg_hypo=hypo, avhubert_hypo=baseline_data['hypo'][idx], savepath=save_path, alignment_path=alignment_path, mode=quality)
+            #         plt.close()
 
 
             # ------------------------------------------------------------------------------------------------------------------------------------
@@ -349,17 +399,16 @@ def run_analysis(model, exps):
             cer_difference = vsm_per_utt_cer - baseline_per_utt_cer
             baseline_better_cer_idx = cer_difference > 0  # Positive difference = baseline better
             viseme_better_cer_idx = cer_difference < 0   #  Negative difference = viseme better
-            plt.figure(figsize=(12, 9))
+            plt.figure(figsize=(15, 11))
             plt.scatter(cross_entropies[baseline_better_cer_idx], cer_difference[baseline_better_cer_idx], 
                        marker='x', label=f'AV-HuBERT Better (n={np.sum(baseline_better_cer_idx)})', s=50)
             plt.scatter(cross_entropies[viseme_better_cer_idx], cer_difference[viseme_better_cer_idx], 
                        marker='.', label=f'VisG AV-HuBERT Better (n={np.sum(viseme_better_cer_idx)})', s=50)
-            plt.xlabel('Cross-entropy', fontsize=14)
-            plt.ylabel('CER Difference (%)', fontsize=14)
+            plt.xlabel('Cross-entropy', fontsize=12)
+            plt.ylabel('CER Difference (%)', fontsize=12)
             # plt.title(f'CER Difference vs Sentence Predictability\n{exp} - {model}, {noise_type} - {snr}dB' if noise_type is not None else f'CER Difference vs Sentence Predictability in Clean Conditions\n{exp} - {model}')
             plt.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
-            plt.tick_params(axis='both', labelsize=14)
-            plt.legend(fontsize=14)
+            plt.legend()
 
             # Add labels for better/worse regions
             xlim = plt.xlim()
@@ -405,7 +454,6 @@ def run_analysis(model, exps):
             #                 color='black'
             #             ))
             cer_perplexity_savepath = os.path.join(save_directory, f'cer_perplexity_{noise_type}_{snr}.pdf') if noise_type is not None else os.path.join(save_directory, 'cer_perplexity.pdf')
-            plt.tight_layout()
             plt.savefig(cer_perplexity_savepath)
             plt.close()
             # plt.show()
@@ -717,7 +765,7 @@ def run_analysis(model, exps):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze AvHubert models with viseme integration.")
     parser.add_argument('--model', type=str, choices=['base', 'large'], default='large', help='Model type to analyze (base or large)')
-    parser.add_argument('--exp', type=str, help='Experiment name to analyze (e.g., Exp1, Exp2, etc.)')
+    parser.add_argument('--exp', type=str, default='Exp5',help='Experiment name to analyze (e.g., Exp1, Exp2, etc.)')
     args = parser.parse_args()
     model = args.model
     exp = args.exp

@@ -12,3 +12,5 @@ roi_checkpoints_warmup_convex_uwso_24k_1layer/
 roi_*
 ctc_*
 base_*
+avhubert/analysis/
+avhubert/preparation/LRS2
