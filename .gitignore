@@ -6,7 +6,6 @@ outputs/
 full_video/
 avhubert/clustering/
 avhubert/misc/
-*.md
 roi_*
 ctc_*
 base_*
