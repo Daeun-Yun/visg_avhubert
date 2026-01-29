@@ -4,9 +4,10 @@
 
 [Robust Self-Supervised Audio-Visual Speech Recognition](https://arxiv.org/abs/2201.01763)
 
-![lip-reading](assets/lipreading.gif)
+
 -->
 ## Introduction
+![example](example.png)
 VisG AV-HuBERT is a multitask extension of AV-HuBERT designed to better leverage the visual modality by incorporating viseme classification as an auxiliary objective. 
 Compared to AV-HuBERT, our model achieves comparable or improved performance—particularly under challenging noise conditions (-10 dB, -5 dB).
 <!--
