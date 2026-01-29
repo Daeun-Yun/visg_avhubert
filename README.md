@@ -118,3 +118,7 @@ See [`preparation`](avhubert/preparation/) for setting up noise directories. The
 $ cd avhubert
 $ bash scripts/mass_decode.sh
 ```
+# Licence
+Our work is licensed under BSD-3. Please, take care of the licenses of the modules we build upon, including AV-HuBERT, Montreal Forced Aligned and LRS3.
+
+
