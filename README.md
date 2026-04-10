@@ -9,7 +9,7 @@
 ## Introduction
 ![example](example.png)
 VisG AV-HuBERT is a multitask extension of AV-HuBERT designed to better leverage the visual modality by incorporating viseme classification as an auxiliary objective. 
-Compared to AV-HuBERT, our model achieves comparable or improved performance—particularly under challenging noise conditions (-10 dB, -5 dB).
+Compared to AV-HuBERT, our model achieves comparable or improved performance—particularly under challenging noise conditions (-10 dB, -5 dB). Find the paper [here](https://arxiv.org/abs/2604.00982). We are very glad to announce that the paper has been accepted for publication at the 28th International Conference on Pattern Recogniton (ICPR 2026).
 <!--
 If you find AV-HuBERT useful in your research, please use the following BibTeX entry for citation.
 
@@ -53,6 +53,10 @@ Please find the checkpoints [here](http://facebookresearch.github.io/av_hubert)
 ## Demo
 Run our lip-reading demo using Colab: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1bNXkfpHiVHzXQH8WjGhzQ-fsDxolpUjD)
 -->
+## Model Checkpoints:
+Please find our viseme-guided models [here](https://drive.google.com/drive/folders/1_C-nTn70q745HgS_BF7kAD9xb_H9Prdr?usp=drive_link). We provide the base and the large VisG AV-HuBERT, fine-tuned as described in the paper.
+
+
 ## Installation
 First, follow AV-HuBERT installation instructions from [AV-HuBERT](https://github.com/facebookresearch/av_hubert).
 
