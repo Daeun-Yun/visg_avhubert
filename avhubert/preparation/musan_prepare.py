@@ -114,29 +114,22 @@ if __name__ == '__main__':
     parser.add_argument('--nshard', type=int, default=1, help='number of shards')
     parser.add_argument('--slurm_partition', type=str, default='cpu', help='slurm partition')
     args = parser.parse_args()
-    tmp_dir = tempfile.mkdtemp(dir='./')
-    executor = submitit.AutoExecutor(folder=tmp_dir)
-    executor.update_parameters(slurm_array_parallelism=100, slurm_partition=args.slurm_partition, timeout_min=240)
     ranks = list(range(0, args.nshard))
     print(f"Split raw audio")
-    jobs = executor.map_array(split_musan, [args.musan for _ in ranks], ranks, [args.nshard for _ in ranks])
-    [job.result() for job in jobs]
+    for rank in ranks:
+        split_musan(args.musan, rank, args.nshard)
     short_musan = os.path.join(args.musan, 'short-musan')
     print(f"Get speaker info")
     get_speaker_info(short_musan)
     print(f"Mix audio")
-    jobs = executor.map_array(make_musan_babble, [short_musan for _ in ranks], ranks, [args.nshard for _ in ranks])
-    [job.result() for job in jobs]
+    for rank in ranks:
+        make_musan_babble(short_musan, rank, args.nshard)
     print(f"Count number of frames")
     wav_fns = glob.glob(f"{short_musan}/babble/*/*wav") + glob.glob(f"{short_musan}/music/*/*wav") + glob.glob(f"{short_musan}/noise/*/*wav")
-    jobs = executor.map_array(count_frames, [wav_fns for _ in ranks], ranks, [args.nshard for _ in ranks])
-    nfs = [job.result() for job in jobs]
-    nfs_ = []
-    for nf in nfs:
-        nfs_.extend(nf)
-    nfs = nfs_
+    nfs = []
+    for rank in ranks:
+        nfs.extend(count_frames(wav_fns, rank, args.nshard))
     num_frames_fn = f"{short_musan}/nframes.audio"
     with open(num_frames_fn, 'w') as fo:
         for wav_fn, nf in zip(wav_fns, nfs):
             fo.write(os.path.abspath(wav_fn)+'\t'+str(nf)+'\n')
-    shutil.rmtree(tmp_dir)

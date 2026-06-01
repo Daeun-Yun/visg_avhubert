@@ -1,7 +1,7 @@
 #! /bin/bash
 
 GROUP=test
-MODALITIES="audio,video"
+MODALITIES="video"
 MODEL_PATH=/home/aristosp/models/exp2/avhubert/checkpoints/normal_finetune/checkpoints/checkpoint_best.pt
 TOKENIZER_PATH=/home/aristosp/datasets/LRS3/spm1000/spm_unigram1000.model
 OUT_PATH=/home/aristosp/models/exp2/avhubert/checkpoints/normal_finetune/decode/
