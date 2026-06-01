@@ -9,6 +9,11 @@ avhubert/misc/
 roi_*
 ctc_*
 base_*
+base/
+visg/
+visg_noise/
+*.pt
+**/__pycache__/
 *.csv
 .vscode/
 assets/
