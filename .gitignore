@@ -12,6 +12,7 @@ base_*
 base/
 visg/
 visg_noise/
+v_only_ctc_vsm/
 *.pt
 **/__pycache__/
 *.csv
