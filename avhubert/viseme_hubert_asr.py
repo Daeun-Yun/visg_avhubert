@@ -260,6 +260,10 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
         metadata={"help": "share decoder input and output embeddings"},
     )
     no_scale_embedding: bool = field(default=True, metadata={'help': 'scale embedding'})
+    subnet_layers: int = field(
+        default=2,
+        metadata={"help": "number of blocks in viseme subnetwork (2 for Base, 3 for Large)"},
+    )
 
 class HubertEncoder(FairseqEncoder):
     def __init__(self, cfg: AVHubertAsrConfig, tgt_dict=None):
@@ -309,6 +313,8 @@ class HubertEncoder(FairseqEncoder):
         w2v_args.task.data = cfg.data
 
         task = tasks.setup_task(w2v_args.task)
+        if state is not None:
+            task.load_state_dict(state['task_state'])
         model = task.build_model(w2v_args.model)
 
         if state is not None and not cfg.no_pretrained_weights:
@@ -434,35 +440,32 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
         self.encoder_output_dim = encoder.w2v_model.encoder.embedding_dim
         if cfg.viseme_classification: # For viseme classification task
             if cfg.use_ctc:
+                hidden_dim = 2 * self.encoder_output_dim
+                layers = [
+                    nn.Dropout(p=0.3),
+                    Linear(self.encoder_output_dim, hidden_dim),
+                    nn.LayerNorm(hidden_dim),
+                    nn.GELU(),
+                ]
+                for _ in range(cfg.subnet_layers - 1):
+                    layers += [
+                        nn.Dropout(p=0.3),
+                        Linear(hidden_dim, hidden_dim),
+                        nn.LayerNorm(hidden_dim),
+                        nn.GELU(),
+                    ]
+                layers += [
+                    nn.Dropout(p=0.3),
+                    Linear(hidden_dim, 15),
+                ]
+                self.viseme_head = nn.Sequential(*layers)
+            else: # Drop > linear > LN > GELU > Drop > OUPUT linear
                 self.viseme_head = nn.Sequential(
-                    nn.Dropout(p=0.3), 
-                    Linear(self.encoder_output_dim,2*self.encoder_output_dim), 
-                    nn.LayerNorm(2*self.encoder_output_dim), 
+                    nn.Dropout(p=0.3),
+                    Linear(self.encoder_output_dim,2*self.encoder_output_dim),
+                    nn.LayerNorm(2*self.encoder_output_dim),
                     nn.GELU(),
                     nn.Dropout(p=0.3),
-                    # 3 layer variation
-                    Linear(2*self.encoder_output_dim,2*self.encoder_output_dim),
-                    nn.LayerNorm(2*self.encoder_output_dim), 
-                    nn.GELU(),
-                    nn.Dropout(p=0.3),
-                    # --------
-                    Linear(2*self.encoder_output_dim, 15)
-                    )
-            else:
-                self.viseme_head = nn.Sequential(
-                    nn.Dropout(p=0.3), 
-                    Linear(self.encoder_output_dim,2*self.encoder_output_dim), 
-                    nn.LayerNorm(2*self.encoder_output_dim), 
-                    nn.GELU(),
-                    # nn.Dropout(p=0.3), 
-                    # Linear(2*cfg.decoder_embed_dim, 4*cfg.decoder_embed_dim), 
-                    # nn.LayerNorm(4*cfg.decoder_embed_dim), 
-                    # nn.GELU(),
-                    nn.Dropout(p=0.3),
-                    # Linear(4*cfg.decoder_embed_dim, 2*cfg.decoder_embed_dim), 
-                    # nn.LayerNorm(2*cfg.decoder_embed_dim), 
-                    # nn.GELU(),
-                    # nn.Dropout(p=0.4), 
                     Linear(2*self.encoder_output_dim, 14)
                     )
         else:

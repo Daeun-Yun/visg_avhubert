@@ -42,7 +42,8 @@ task:
   image_aug: true
   pad_audio: true
   random_crop: false
-  noise_prob: 0.25
+  noise_prob: 0.3
+
   noise_snr: -2.5
   noise_wav: ???
 
@@ -65,10 +66,7 @@ criterion:
   learnable_weights: false
   uncertainty: false
   uwso: false
-  rlw: false
-  warmup: false
-  dwa: false
-  nonlinear: false
+  warmup: true
   use_ctc: true  # Use CTC for viseme classification task
 
 optimization:

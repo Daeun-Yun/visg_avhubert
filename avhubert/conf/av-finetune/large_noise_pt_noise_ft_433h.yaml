@@ -12,7 +12,7 @@ checkpoint:
   save_interval: 2
   keep_interval_updates: 1
   no_epoch_checkpoints: true
-  best_checkpoint_metric: asr_accuracy
+  best_checkpoint_metric: accuracy
   maximize_best_checkpoint_metric: true
 
 distributed_training:
@@ -23,10 +23,8 @@ distributed_training:
   nprocs_per_node: 8
 
 task:
-  _name: viseme_av_hubert_pretraining
+  _name: av_hubert_pretraining
   is_s2s: true
-  viseme_classification: true
-  viseme_dir: ???
   data: ???
   label_dir: ???
   tokenizer_bpe_model: ???
@@ -41,11 +39,9 @@ task:
   image_aug: true
   pad_audio: true
   random_crop: false
-  noise_prob: 0.3
-  noise_snr: -2.5
+  noise_prob: 0.25
+  noise_snr: 0
   noise_wav: ???
-  use_ctc: true  # Use CTC loss for viseme classification
-
 
 dataset:
   num_workers: 6
@@ -56,20 +52,9 @@ dataset:
   valid_subset: valid
 
 criterion:
-  _name: multitask_criterion
-  viseme_weight: 0.15
-  sentence_avg: true
+  _name: label_smoothed_cross_entropy
+  report_accuracy: true
   label_smoothing: 0.1
-  ignore_viseme_padding: true
-  viseme_start_update: 22000
-  convex_linear: false
-  learnable_weights: false
-  uncertainty: false
-  uwso: false
-  use_ctc: true  # Use CTC for viseme classification task
-  warmup: false
-
-
 
 optimization:
   max_update: 60000
@@ -92,7 +77,6 @@ lr_scheduler:
 model:
   _name: av_hubert_seq2seq
   w2v_path: ???
-  viseme_classification: true
   apply_mask: false
   mask_selection: static
   mask_length: 10
@@ -111,14 +95,12 @@ model:
   decoder_dropout: 0.1
   decoder_attention_dropout: 0.0
   decoder_activation_dropout: 0.1
-  freeze_finetune_updates: 40000
+  freeze_finetune_updates: 48000
   share_decoder_input_output_embed: true
   decoder_normalize_before: true
   decoder_embed_dim: 1024
   decoder_ffn_embed_dim: 4096
   decoder_attention_heads: 8
-  use_ctc: true
-  subnet_layers: 3
 
 hydra:
   job:

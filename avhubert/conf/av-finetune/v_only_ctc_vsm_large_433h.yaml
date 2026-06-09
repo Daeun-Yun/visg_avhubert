@@ -12,8 +12,8 @@ checkpoint:
   save_interval: 2
   keep_interval_updates: 1
   no_epoch_checkpoints: true
-  best_checkpoint_metric: asr_accuracy
-  maximize_best_checkpoint_metric: true
+  best_checkpoint_metric: uer
+  maximize_best_checkpoint_metric: false
 
 distributed_training:
   ddp_backend: c10d
@@ -24,28 +24,19 @@ distributed_training:
 
 task:
   _name: viseme_av_hubert_pretraining
-  is_s2s: true
-  viseme_classification: true
-  viseme_dir: ???
-  data: ???
-  label_dir: ???
-  tokenizer_bpe_model: ???
-  normalize: true  # must be consistent with pre-training
-  labels: ["wrd"]
-  single_target: true
+  is_s2s: false
   fine_tuning: true
+  data: /data/DB/lrs3/433h_data
+  label_dir: /data/DB/lrs3/433h_data
+  labels: ["vsm"]
+  normalize: true  # must be consistent with pre-training
+  single_target: true
+  modalities: ["video"]
   stack_order_audio: 4
-  tokenizer_bpe_name: sentencepiece
   max_sample_size: 500
-  modalities: ["video","audio"]
   image_aug: true
-  pad_audio: true
+  pad_audio: false
   random_crop: false
-  noise_prob: 0.3
-  noise_snr: -2.5
-  noise_wav: ???
-  use_ctc: true  # Use CTC loss for viseme classification
-
 
 dataset:
   num_workers: 6
@@ -56,20 +47,10 @@ dataset:
   valid_subset: valid
 
 criterion:
-  _name: multitask_criterion
-  viseme_weight: 0.15
+  _name: ctc
+  zero_infinity: true
   sentence_avg: true
-  label_smoothing: 0.1
-  ignore_viseme_padding: true
-  viseme_start_update: 22000
-  convex_linear: false
-  learnable_weights: false
-  uncertainty: false
-  uwso: false
-  use_ctc: true  # Use CTC for viseme classification task
-  warmup: false
-
-
+  post_process: letter
 
 optimization:
   max_update: 60000
@@ -90,9 +71,8 @@ lr_scheduler:
   final_lr_scale: 0.05
 
 model:
-  _name: av_hubert_seq2seq
-  w2v_path: ???
-  viseme_classification: true
+  _name: av_hubert_ctc
+  w2v_path: /home/dan/projects/visg_avhubert/large_vox_iter5.pt
   apply_mask: false
   mask_selection: static
   mask_length: 10
@@ -107,18 +87,7 @@ model:
   activation_dropout: 0.1
   attention_dropout: 0.0
   feature_grad_mult: 1.0
-  decoder_layers: 9
-  decoder_dropout: 0.1
-  decoder_attention_dropout: 0.0
-  decoder_activation_dropout: 0.1
   freeze_finetune_updates: 40000
-  share_decoder_input_output_embed: true
-  decoder_normalize_before: true
-  decoder_embed_dim: 1024
-  decoder_ffn_embed_dim: 4096
-  decoder_attention_heads: 8
-  use_ctc: true
-  subnet_layers: 3
 
 hydra:
   job:
@@ -133,10 +102,8 @@ hydra:
           - model.w2v_path
           - dataset.train_subset
           - dataset.valid_subset
-          - criterion.wer_kenlm_model
-          - criterion.wer_lexicon
   run:
-    dir: ???
+    dir: /home/dan/projects/visg_avhubert/v_only_ctc_vsm
   sweep:
-    dir: ???
+    dir: /home/dan/projects/visg_avhubert/v_only_ctc_vsm
     subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
