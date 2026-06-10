@@ -1,8 +1,4 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
 
 import sys,logging
 import contextlib
@@ -205,6 +201,10 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
         metadata={
             "help": "if set, use CTC loss for the viseme classification task"
         },)
+    num_viseme_classes: int = field(
+        default=21,
+        metadata={"help": "number of viseme classes"},
+    )
     decoder_embed_dim: int = field(
         default=768, metadata={"help": "decoder embedding dimension"}
     )
@@ -446,7 +446,7 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
                     nn.GELU(),
                     nn.Dropout(p=0.3),
                     # --------
-                    Linear(2*self.encoder_output_dim, 15)
+                    Linear(2*self.encoder_output_dim, cfg.num_viseme_classes)
                     )
             else:
                 self.viseme_head = nn.Sequential(
@@ -518,6 +518,13 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
         task_pretrain = tasks.setup_task(w2v_args.task)
         if state is not None:
             task_pretrain.load_state_dict(state['task_state'])
+        
+        task.load_dataset('train')
+        if hasattr(task, 'datasets') and 'train' in task.datasets:
+            dataset = task.datasets['train']
+            if hasattr(dataset, 'num_viseme_classes'):
+                # Overwrite config with the value from Line 255 of myhubert_dataset.py
+                cfg.num_viseme_classes = dataset.num_viseme_classes 
 
         encoder_ = task_pretrain.build_model(w2v_args.model)
 
