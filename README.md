@@ -116,6 +116,8 @@ $ bash scripts/decode.sh
 ```
 
 #### Test under noisy environment
+##### New: Find the noise files we used [here](https://drive.google.com/drive/folders/1ZnmBQSJ4wiffdltgWyYeWO_NElTJh65M?usp=sharing)
+
 If you want to test your model under noisy environment, run the following command, to evaluate under all noise categories (Babble, Speech, Music, Noise).
 See [`preparation`](avhubert/preparation/) for setting up noise directories. The following script evaluates all categories, from -10dB to 10dB SNR and saves the results in a csv file.
 ```sh
