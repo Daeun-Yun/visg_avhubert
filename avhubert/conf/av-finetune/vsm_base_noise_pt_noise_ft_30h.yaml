@@ -42,7 +42,7 @@ task:
   image_aug: true
   pad_audio: true
   random_crop: false
-  noise_prob: 0.25
+  noise_prob: 0.3
   noise_snr: -2.5
   noise_wav: ???
 
@@ -93,7 +93,6 @@ model:
   _name: av_hubert_seq2seq
   w2v_path: ???
   viseme_classification: true
-  weight_mix: false
   use_ctc: true  # Use CTC for viseme classification task
   apply_mask: false
   mask_selection: static

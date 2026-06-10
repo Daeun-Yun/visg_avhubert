@@ -19,14 +19,15 @@ distributed_training:
   ddp_backend: c10d
   find_unused_parameters: true
   distributed_world_size: 1
-  distributed_port: 29671
+  # distributed_port: 29671
   nprocs_per_node: 1
 
 task:
   _name: viseme_av_hubert_pretraining
-  is_s2s: true
+  use_ctc: true  # Use CTC loss for viseme classification
   viseme_classification: true
   viseme_dir: ???
+  is_s2s: true
   data: ???
   label_dir: ???
   tokenizer_bpe_model: ???
@@ -47,7 +48,7 @@ task:
 
 dataset:
   num_workers: 6
-  max_tokens: 4000
+  max_tokens: 2000
   validate_after_updates: 0
   validate_interval: 2
   train_subset: train
@@ -55,21 +56,26 @@ dataset:
 
 criterion:
   _name: multitask_criterion
-  viseme_weight: 0.2
+  viseme_weight: 0.35
   sentence_avg: true
   label_smoothing: 0.1
   ignore_viseme_padding: true
-  viseme_start_update: 22000
+  viseme_start_update: 0
   convex_linear: false
   learnable_weights: false
   uncertainty: false
   uwso: false
+  rlw: false
+  warmup: false
+  dwa: false
+  nonlinear: false
+  use_ctc: true  # Use CTC for viseme classification task
 
 optimization:
   max_update: 18000
   lr: [0.001]
   sentence_avg: true
-  update_freq: [2]
+  update_freq: [4]
 
 optimizer:
   _name: adam
@@ -85,8 +91,9 @@ lr_scheduler:
 
 model:
   _name: av_hubert_seq2seq
-  w2v_path: ???
   viseme_classification: true
+  use_ctc: true  # Use CTC for viseme classification task
+  w2v_path: ???
   apply_mask: false
   mask_selection: static
   mask_length: 10
