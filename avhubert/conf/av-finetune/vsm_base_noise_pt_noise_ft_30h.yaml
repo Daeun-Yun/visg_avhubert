@@ -43,7 +43,6 @@ task:
   pad_audio: true
   random_crop: false
   noise_prob: 0.3
-
   noise_snr: -2.5
   noise_wav: ???
 
@@ -66,14 +65,17 @@ criterion:
   learnable_weights: false
   uncertainty: false
   uwso: false
-  warmup: true
+  rlw: false
+  warmup: true # 여기서는 false인데 논문에서는 true라고 언급됨. 
+  dwa: false
+  nonlinear: false
   use_ctc: true  # Use CTC for viseme classification task
 
 optimization:
   max_update: 30000
   lr: [0.001]
   sentence_avg: true
-  update_freq: [2]
+  update_freq: [4]
 
 optimizer:
   _name: adam
@@ -91,7 +93,6 @@ model:
   _name: av_hubert_seq2seq
   w2v_path: ???
   viseme_classification: true
-  weight_mix: false
   use_ctc: true  # Use CTC for viseme classification task
   apply_mask: false
   mask_selection: static

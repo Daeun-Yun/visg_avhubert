@@ -54,6 +54,7 @@ class OverrideConfig(FairseqDataclass):
     modalities: List[str] = field(default_factory=lambda: [""], metadata={'help': 'which modality to use'})
     data: Optional[str] = field(default=None, metadata={'help': 'path to test data directory'})
     label_dir: Optional[str] = field(default=None, metadata={'help': 'path to test label directory'})
+    w2v_path: Optional[str] = field(default=None, metadata={'help': 'override pretrained model path in checkpoint'})
 
 @dataclass
 class InferConfig(FairseqDataclass):
@@ -109,7 +110,8 @@ def _main(cfg, output_file):
         logger.addHandler(logging.StreamHandler(sys.stdout))
 
     utils.import_user_module(cfg.common)
-    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path])
+    arg_overrides = {'w2v_path': cfg.override.w2v_path} if cfg.override.w2v_path else {}
+    models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task([cfg.common_eval.path], arg_overrides=arg_overrides)
     models = [model.eval().cuda() for model in models]
     saved_cfg.task.modalities = cfg.override.modalities
     task = tasks.setup_task(saved_cfg.task)

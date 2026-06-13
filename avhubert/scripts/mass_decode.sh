@@ -1,30 +1,54 @@
-#! /bin/bash
-# Copyright (c) Meta Platforms, Inc. and its affiliates.
-# All rights reserved.
+# #! /bin/bash
+# # Copyright (c) Meta Platforms, Inc. and its affiliates.
+# # All rights reserved.
+# #
+# # This source code is licensed under the license found in the
+# # LICENSE file in the root directory of this source tree.
 #
-# This source code is licensed under the license found in the
-# LICENSE file in the root directory of this source tree.
+# GROUP=test
+# MODALITIES="audio,video"
+# MODEL_PATH=/home/aristosp/models/exp2/avhubert/ctc_20k_1layernonconvex_0.2-2.5db/checkpoints/checkpoint_best.pt
+# BASE_OUT_PATH=/home/aristosp/models/exp2/avhubert/ctc_20k_1layernonconvex_0.2-2.5db/decode
+#
+# # noise types
+# NOISE_TYPES=(
+#     "/home/aristosp/datasets/LRS3/noise/speech"
+#     "/home/aristosp/datasets/LRS3/noise/babble"
+#     "/home/aristosp/datasets/musan/tsv/babble"
+#     "/home/aristosp/datasets/musan/tsv/music"
+#     "/home/aristosp/datasets/musan/tsv/noise"
+# )
+#
+# # SNR levels
+# SNR_LEVELS=(-10 -5 0 5 10)
+#
+# # set paths
+# ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
+# AV_HUBERT=${ROOT}/avhubert
+# export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
+
+#! /bin/bash
 
 GROUP=test
 MODALITIES="audio,video"
-MODEL_PATH=/home/aristosp/models/exp2/avhubert/ctc_20k_1layernonconvex_0.2-2.5db/checkpoints/checkpoint_best.pt
-BASE_OUT_PATH=/home/aristosp/models/exp2/avhubert/ctc_20k_1layernonconvex_0.2-2.5db/decode
+MODEL_PATH=/data/DB/large_checkpoint_best.pt
+BASE_OUT_PATH=/data/DB/decode_large_433h_noise
 
 # noise types
 NOISE_TYPES=(
-    "/home/aristosp/datasets/LRS3/noise/speech"
-    "/home/aristosp/datasets/LRS3/noise/babble"
-    "/home/aristosp/datasets/musan/tsv/babble"
-    "/home/aristosp/datasets/musan/tsv/music"
-    "/home/aristosp/datasets/musan/tsv/noise"
+    "/data/DB/lrs3/noise/speech"
+    "/data/DB/lrs3/noise/babble"
+    "/data/DB/musan/tsv/babble"
+    "/data/DB/musan/tsv/music"
+    "/data/DB/musan/tsv/noise"
 )
 
 # SNR levels
 SNR_LEVELS=(-10 -5 0 5 10)
 
 # set paths
-ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
-AV_HUBERT=${ROOT}/avhubert
+AV_HUBERT=$(dirname "$(dirname "$(readlink -fm "$0")")")
+ROOT=$(dirname "${AV_HUBERT}")
 export PYTHONPATH="${ROOT}/fairseq:$PYTHONPATH"
 
 # summary file (CSV)
@@ -53,13 +77,15 @@ for NOISE in "${NOISE_TYPES[@]}"; do
             common.user_dir=${AV_HUBERT} \
             override.modalities=[${MODALITIES}] \
             dataset.gen_subset=${GROUP} \
-            override.data=/home/aristosp/datasets/LRS3/30h_data \
-            override.label_dir=/home/aristosp/datasets/LRS3/30h_data \
+            override.data=/data/DB/lrs3/433h_data \
+            override.label_dir=/data/DB/lrs3/433h_data \
             common_eval.path=${MODEL_PATH} \
             common_eval.results_path=${OUT_PATH} \
             override.noise_prob=1 \
             override.noise_snr=${SNR} \
-            +override.noise_wav=${NOISE} | tee "$LOGFILE"
+            override.noise_wav=${NOISE} \
+            override.w2v_path=/data/DB/large_vox_iter5.pt \
+            distributed_training.distributed_world_size=1 | tee "$LOGFILE"
 
     # Extract WER (format: "WER: 9.979777553083924%")
     WER=$(grep -oP "WER:\s*\K[0-9.]+(?=%)" "$LOGFILE")

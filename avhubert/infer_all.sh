@@ -187,7 +187,7 @@ fi
 
 subsets=("test" "test1" "test2" "test3" "test4")
 
-data_433h=/home/dan/DB/lrs3/433h_data
+data_433h=/data/DB/lrs3/433h_data
 
 for subset in "${subsets[@]}"; do
     echo "=== Inferring: ${subset} ==="
