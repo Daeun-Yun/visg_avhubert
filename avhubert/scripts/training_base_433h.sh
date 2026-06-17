@@ -1,30 +1,31 @@
 # visg 모델 433h base 실험
 # viseme_weight: {0.15, 0.2} x viseme_start: {20000, 0} 4가지 조합 순차 실행
-
-PRETRAINED_MODEL_PATH=/home/dan/projects/av_hubert/lrs3_vox_noise_pt_iter5.pt
+PRETRAINED_MODEL_PATH=/workspace/code/visg_avhubert/base_vox_iter5.pt
 ROOT=$(dirname "$(dirname "$(readlink -fm "$0")")")
 AV_HUBERT=${ROOT}
 
-export PYTHONPATH="/home/dan/projects/av_hubert/fairseq:$PYTHONPATH"
-export OMP_NUM_THREADS=1
-export MKL_NUM_THREADS=1
-data=/data/DB/lrs3/433h_data
-bpe_model=/data/DB/lrs3/spm1000/spm_unigram1000.model
+export PYTHONPATH="/workspace/code/visg_avhubert/fairseq:$PYTHONPATH"
+export OMP_NUM_THREADS=2
+export MKL_NUM_THREADS=2
+export CUDA_VISIBLE_DEVICES=0,1
+
+data=/DB/lrs3/433h_data
+bpe_model=/DB/lrs3/spm1000/spm_unigram1000.model
 
 GROUP=test
 MODALITIES="audio,video"
 
 # 조합: "viseme_weight viseme_start result_suffix"
 COMBINATIONS=(
-    "0.15 20000 vw0.15_vs20k"
+    # "0.15 20000 vw0.15_vs20k"
     "0.2  20000 vw0.2_vs20k"
-    "0.15 0     vw0.15_vs0"
-    "0.2  0     vw0.2_vs0"
+    # "0.15 0     vw0.15_vs0" #완
+    # "0.2  0     vw0.2_vs0" #완
 )
 
 for combo in "${COMBINATIONS[@]}"; do
     read -r VISEME_WEIGHT VISEME_START SUFFIX <<< "$combo"
-    result=/data/results/visg/visg_base_433h_${SUFFIX}
+    result=/DB/results/visg/visg_base_433h_${SUFFIX}
     OUT_PATH="${result}/s2s/decode"
 
     echo ""
@@ -39,19 +40,25 @@ for combo in "${COMBINATIONS[@]}"; do
     else
         fairseq-hydra-train \
         --config-dir ${AV_HUBERT}/conf/av-finetune \
-        --config-name vsm_base_noise_pt_noise_ft_30h.yaml \
+        --config-name vsm_base_noise_pt_noise_ft_433h.yaml \
         task.data=$data \
         task.label_dir=$data \
         task.tokenizer_bpe_model=$bpe_model \
         model.w2v_path=${PRETRAINED_MODEL_PATH} \
         common.user_dir=${PWD} \
-        task.noise_wav=/data/DB/musan/tsv/all \
+        task.noise_wav=/DB/musan/tsv/all \
         hydra.run.dir=${result} \
         task.viseme_dir=$data \
         criterion.viseme_weight=${VISEME_WEIGHT} \
-        criterion.viseme_start_update=${VISEME_START} &&
+        distributed_training.distributed_world_size=2 \
+        distributed_training.nprocs_per_node=2 \
+        distributed_training.distributed_port=0 \
+        criterion.viseme_start_update=${VISEME_START} \
+        dataset.max_tokens=4000 \
+        optimization.update_freq=[1] &&
         echo "finished : $(date '+%Y-%m-%d %H:%M:%S')" > ${result}/finish.txt
     fi
+    
 
     # start decoding (clean)
     if [ -f "${result}/s2s/clean_finish.txt" ]; then
@@ -83,7 +90,7 @@ for combo in "${COMBINATIONS[@]}"; do
         echo "SNR,NoiseType,WER" > "$SUMMARY_FILE"
 
         for SNR in "${SNR_LEVELS[@]}"; do
-            NOISE="/data/DB/lrs3/noise/babble"
+            NOISE="/DB/lrs3/noise/babble"
             NOISE_NAME="babble"
             NOISY_OUT_PATH="${MASS_OUT_PATH}/${NOISE_NAME}_snr${SNR}"
             mkdir -p "$NOISY_OUT_PATH"
@@ -125,7 +132,7 @@ for combo in "${COMBINATIONS[@]}"; do
         echo "SNR,NoiseType,WER" > "$SUMMARY_FILE"
 
         for SNR in "${SNR_LEVELS[@]}"; do
-            NOISE="/data/DB/lrs3/noise/speech"
+            NOISE="/DB/lrs3/noise/speech"
             NOISE_NAME="speech"
             WER_SUM=0
             WER_COUNT=0

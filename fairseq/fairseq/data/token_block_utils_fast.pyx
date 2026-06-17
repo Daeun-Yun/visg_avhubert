@@ -12,6 +12,8 @@ from libc.math cimport ceil
 cimport cython
 cimport numpy as np
 
+np.import_array()
+
 from libc.stdint cimport int32_t, int64_t
 
 DTYPE = np.int64

@@ -5,9 +5,7 @@ import itertools
 import logging
 import os
 import sys
-import time
 from typing import Any, List, Optional, Union
-# import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 import torch
@@ -16,10 +14,6 @@ from fairseq.data import data_utils
 from fairseq.data.fairseq_dataset import FairseqDataset
 from python_speech_features import logfbank
 from scipy.io import wavfile
-from itertools import groupby
-
-def collapse_adjacent_visemes(viseme_list):
-    return [v for v, _ in groupby(viseme_list)]
 
 DBG=True if len(sys.argv) == 1 else False
 
@@ -35,6 +29,18 @@ else:
     from . import utils as custom_utils
 
 logger = logging.getLogger(__name__)
+
+
+class DictLabelEncoder:
+    def __init__(self, dictionary):
+        self.dictionary = dictionary
+        self.blank_idx = dictionary.get('<blank>', -1)
+
+    def transform(self, labels):
+        return [self.dictionary.get(l, self.dictionary.get('<unk>', -1)) for l in labels]
+
+    def get_pad_index(self):
+        return self.blank_idx
 
 
 def load_audio_visual(manifest_path, max_keep, min_keep, frame_rate, label_paths, label_rates, tol=0.1):
@@ -253,24 +259,13 @@ class AVHubertDataset(FairseqDataset):
         if self.viseme_labels is not None:
             if self.use_ctc:
                 logger.info("Using CTC for viseme classification")
-                unique_visemes = sorted(list(set(v for sample_labels in self.viseme_labels for v in sample_labels)), key=lambda x: int(x[1:]))  # sort by numeric part after 'V')
+                unique_visemes = sorted(list(set(v for sample_labels in self.viseme_labels for v in sample_labels)))       
                 self.viseme_dict = {v: i + 1 for i, v in enumerate(unique_visemes)}
-                logger.info(f"Unique visemes found: {self.viseme_dict}")
                 self.viseme_dict['<blank>'] = 0
                 self.blank_idx = self.viseme_dict['<blank>']
-                self.num_viseme_classes = len(self.viseme_dict)
-                class DictLabelEncoder:
-                        def __init__(self, dictionary):
-                            self.dictionary = dictionary
-                            self.blank_idx = dictionary.get('<blank>', -1)
-                        def transform(self, labels):
-                            return [self.dictionary.get(l, self.dictionary.get('<unk>', -1)) for l in labels] # Use <unk> for safety
-                        def get_pad_index(self):
-                            return self.blank_idx # use blank index for padding
-
                 self.label_encoder = DictLabelEncoder(self.viseme_dict)
             else:
-                unique_visemes = sorted(list(set(v for sample_labels in self.viseme_labels for v in sample_labels) | {'V0'}))            
+                unique_visemes = sorted(list(set(v for sample_labels in self.viseme_labels for v in sample_labels) | {'S'}))            
                 self.label_encoder.fit(unique_visemes)
 
     def get_label(self, index, label_idx):
@@ -321,7 +316,8 @@ class AVHubertDataset(FairseqDataset):
             sample_rate, wav_data = wavfile.read(audio_fn)
             assert sample_rate == 16_000 and len(wav_data.shape) == 1
             if np.random.rand() < self.noise_prob:
-                wav_data = self.add_noise(wav_data)
+                video_id = audio_fn.split('/')[-2]
+                wav_data = self.add_noise(wav_data, exclude_id=video_id)
             audio_feats = logfbank(wav_data, samplerate=sample_rate).astype(np.float32) # [T, F]
             audio_feats = stacker(audio_feats, self.stack_order_audio) # [T/stack_order_audio, F*stack_order_audio]
         else:
@@ -340,11 +336,17 @@ class AVHubertDataset(FairseqDataset):
         feats = np.expand_dims(feats, axis=-1)
         return feats
 
-    def select_noise(self):
-        rand_indexes = np.random.randint(0, len(self.noise_wav), size=self.noise_num)
+    def select_noise(self, exclude_id=None):  # de: 자신의 발화는 제외한 발화 중에서 랜덤으로 선택하도록 했음
+        candidates = self.noise_wav
+        if exclude_id is not None:
+            prefix = exclude_id + '_'
+            filtered = [p for p in self.noise_wav if not os.path.basename(p).startswith(prefix)]
+            if filtered:
+                candidates = filtered
+        rand_indexes = np.random.randint(0, len(candidates), size=self.noise_num)
         noise_wav = []
         for x in rand_indexes:
-            noise_wav.append(wavfile.read(self.noise_wav[x])[1].astype(np.float32))
+            noise_wav.append(wavfile.read(candidates[x])[1].astype(np.float32))
         if self.noise_num == 1:
             return noise_wav[0]
         else:
@@ -353,9 +355,9 @@ class AVHubertDataset(FairseqDataset):
             noise_wav = np.floor(np.stack(noise_wav).mean(axis=0))
             return noise_wav
 
-    def add_noise(self, clean_wav):
+    def add_noise(self, clean_wav, exclude_id=None):
         clean_wav = clean_wav.astype(np.float32)
-        noise_wav = self.select_noise()
+        noise_wav = self.select_noise(exclude_id=exclude_id)
         if type(self.noise_snr) == int or type(self.noise_snr) == float:
             snr = self.noise_snr
         elif type(self.noise_snr) == tuple:
@@ -396,16 +398,11 @@ class AVHubertDataset(FairseqDataset):
         item = {"id": index, 'fid': fid, "video_source": video_feats, 'audio_source': audio_feats, "label_list": labels}
         if self.viseme_labels is not None:
             if self.use_ctc:
-                # before encoding CTC target
                 viseme_list = self.viseme_labels[index]
-                viseme_list = collapse_adjacent_visemes(viseme_list)
-                viseme_target = torch.LongTensor(self.label_encoder.transform(viseme_list))
-                # viseme_list = self.viseme_labels[index]
-                # # Return the raw sequence of viseme indices, NOT the frame-expanded one.
-                
-                # viseme_target = torch.LongTensor(
-                #     self.label_encoder.transform(viseme_list)
-                # )
+                # Return the raw sequence of viseme indices, NOT the frame-expanded one.
+                viseme_target = torch.LongTensor(
+                    self.label_encoder.transform(viseme_list)
+                )
                 item["viseme_target"] = viseme_target
                 # Provide the true length of the viseme sequence
                 item["viseme_target_length"] = len(viseme_target)
@@ -418,6 +415,7 @@ class AVHubertDataset(FairseqDataset):
                 extended_labels = np.full(max(end_times), 'S', dtype=object) # Initialize with 'S' (silence) for all frames
                 viseme_list = self.viseme_labels[index]
                 viseme_len = len(viseme_list)
+                item["viseme_target_length"] = viseme_len
                 for i, (start, end) in enumerate(zip(begin_times, end_times)): # Iterate through the begin and end times
                     # Clip the end index if it exceeds bounds
                     end = min(end, max(end_times))
@@ -505,7 +503,7 @@ class AVHubertDataset(FairseqDataset):
             batch["target_list"] = targets_list
         # Create tensor for visemes if they are present
         if "viseme_target" in samples[0]:
-            if self.use_ctc:
+            if self.use_ctc is True:
                 viseme_targets = [s["viseme_target"] for s in samples]
                 viseme_lengths = torch.LongTensor([s["viseme_target_length"] for s in samples])
 
@@ -532,11 +530,12 @@ class AVHubertDataset(FairseqDataset):
                 # Create a tensor to hold the viseme targets and initialize with -1 as the padding value
                 vsm_targets = torch.full((len(samples), max_vsm_len), -1, dtype=torch.long)
                 for i, s in enumerate(samples): # Iterate through the labels and fill the tensor
-                    target = s["viseme_target"]
                     vsm_targets[i, :len(s["viseme_target"])] = s["viseme_target"]
-                
+                viseme_lengths = torch.LongTensor([s["viseme_target_length"] for s in samples])
+                batch["viseme_target_length"] = viseme_lengths
                 batch["viseme_target"] = vsm_targets # Add viseme targets to the batch
                 batch["viseme_padding_mask"] = torch.BoolTensor(vsm_targets == -1) # Create padding mask for viseme targets
+                batch["viseme_ntokens"] = (vsm_targets != -1).sum().item()
         return batch
 
     def collater_audio(self, audios, audio_size, audio_starts=None):

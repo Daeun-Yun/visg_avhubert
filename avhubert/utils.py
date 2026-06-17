@@ -4,13 +4,19 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import cv2
 import torch
 import random
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
+cv2.setNumThreads(4)
+
 def load_video(path):
+    npy_path = path.replace(".mp4", ".npy")
+    if os.path.exists(npy_path):
+        return np.load(npy_path)
     for i in range(3):
         try:
             cap = cv2.VideoCapture(path)

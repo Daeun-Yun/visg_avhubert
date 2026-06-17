@@ -18,13 +18,14 @@ checkpoint:
 distributed_training:
   ddp_backend: c10d
   find_unused_parameters: true
-  distributed_world_size: 8
+  distributed_world_size: 1
   distributed_port: 29671
-  nprocs_per_node: 8
+  nprocs_per_node: 1
 
 task:
   _name: viseme_av_hubert_pretraining
   is_s2s: true
+  use_ctc: true  # Use CTC loss for viseme classification
   viseme_classification: true
   viseme_dir: ???
   data: ???
@@ -41,13 +42,13 @@ task:
   image_aug: true
   pad_audio: true
   random_crop: false
-  noise_prob: 0.25
-  noise_snr: 0
+  noise_prob: 0.3
+  noise_snr: -2.5
   noise_wav: ???
 
 dataset:
-  num_workers: 6
-  max_tokens: 1000
+  num_workers: 8
+  max_tokens: 2000
   validate_after_updates: 0
   validate_interval: 2
   train_subset: train
@@ -55,21 +56,23 @@ dataset:
 
 criterion:
   _name: multitask_criterion
-  viseme_weight: 0.2
+  viseme_weight: 0.2  #de : 이거는 base 30h은 0.2이고, large 433h은 0.15라서 둘다 해봐야 함. 
   sentence_avg: true
   label_smoothing: 0.1
   ignore_viseme_padding: true
-  viseme_start_update: 22000
+  viseme_start_update: 22000  #de : 이거는 base 30h은 20k이고, large 433h은 0k라서 둘다 해봐야 함. 
   convex_linear: false
   learnable_weights: false
   uncertainty: false
   uwso: false
+  use_ctc: true  # Use CTC for viseme classification task
+
 
 optimization:
   max_update: 60000
   lr: [0.001]
   sentence_avg: true
-  update_freq: [1]
+  update_freq: [4]
 
 optimizer:
   _name: adam
@@ -85,8 +88,9 @@ lr_scheduler:
 
 model:
   _name: av_hubert_seq2seq
-  w2v_path: ???
   viseme_classification: true
+  use_ctc: true  # Use CTC for viseme classification task
+  w2v_path: ???
   apply_mask: false
   mask_selection: static
   mask_length: 10
@@ -105,7 +109,7 @@ model:
   decoder_dropout: 0.1
   decoder_attention_dropout: 0.0
   decoder_activation_dropout: 0.1
-  freeze_finetune_updates: 48000
+  freeze_finetune_updates: 40000
   share_decoder_input_output_embed: true
   decoder_normalize_before: true
 
